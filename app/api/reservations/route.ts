@@ -20,14 +20,14 @@ export async function POST(req: NextRequest) {
                 FOR UPDATE
             `
 
-            console.log("got lock", rows)
+            console.log("got lock, checking stock...")
 
             if (!rows.length) throw new Error("NO_STOCK_RECORD")
 
             const s = rows[0]
             const avail = s.total - s.reserved
 
-            if (avail < q) throw new Error("INSUFFICIENT")
+            if (avail <= 0 || avail < q) throw new Error("INSUFFICIENT")
 
             await tx.stockLevel.update({
                 where: { productId_warehouseId: { productId: pid, warehouseId: wid } },
@@ -41,11 +41,14 @@ export async function POST(req: NextRequest) {
             })
 
             return reservation
-        })
+        }, { timeout: 8000 })
 
         return NextResponse.json(r, { status: 201 })
     } catch (e: any) {
         if (e.message === "INSUFFICIENT" || e.message === "NO_STOCK_RECORD") {
+            return NextResponse.json({ error: "not enough stock" }, { status: 409 })
+        }
+        if (e.code === "P2028") {
             return NextResponse.json({ error: "not enough stock" }, { status: 409 })
         }
         console.error(e)
