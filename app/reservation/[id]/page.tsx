@@ -33,7 +33,7 @@ export default function ReservationPage({ params }: { params: { id: string } }) 
   useEffect(() => {
     if (!res || res.status !== "PENDING") return
     const calc = () => {
-      const diff = Math.floor((new Date(res.expiresAt).getTime() - Date.now()) / 1000)
+      const diff = Math.round((new Date(res.expiresAt).getTime() - Date.now()) / 1000)
       setSecs(Math.max(0, diff))
     }
 
