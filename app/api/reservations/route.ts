@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
 
     try {
         const r = await db.$transaction(async (tx) => {
-            const rows = await tx.$queryRaw<{ id: string; total: number; reserved: number }[]>`
+            const rows = await tx.$queryRaw<{ id: string; total: bigint; reserved: bigint }[]>`
                 SELECT id, total, reserved FROM "StockLevel"
                 WHERE "productId" = ${pid} AND "warehouseId" = ${wid}
                 FOR UPDATE
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
             if (!rows.length) throw new Error("NO_STOCK_RECORD")
 
             const s = rows[0]
-            const avail = s.total - s.reserved
+            const avail = Number(s.total) - Number(s.reserved)
 
             if (avail <= 0 || avail < q) throw new Error("INSUFFICIENT")
 
