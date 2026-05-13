@@ -23,7 +23,7 @@ export default function Home() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [reserving, setReserving] = useState<string | null>(null)
-  const [err, setErr] = useState<string | null>(null)
+  const [err, setErr] = useState<{key: string, msg: string} | null>(null)
   const [quantities, setQuantities] = useState<Record<string, number | string>>({})
   const router = useRouter()
 
@@ -50,13 +50,13 @@ export default function Home() {
     const data = await res.json()
 
     if (res.status === 409) {
-      setErr(`Not enough stock at ${wname}`)
+      setErr({ key: stockKey, msg: `Not enough stock at ${wname}` })
       setReserving(null)
       return
     }
 
     if (!res.ok) {
-      setErr("Something went wrong, try again")
+      setErr({ key: stockKey, msg: "Something went wrong, try again" })
       setReserving(null)
       return
     }
@@ -70,11 +70,7 @@ export default function Home() {
     <div>
       <h1 className="text-2xl font-bold mb-6">Products</h1>
 
-      {err && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded text-sm">
-          {err}
-        </div>
-      )}
+
 
       <div className="space-y-4">
         {products.map(p => (
@@ -93,34 +89,39 @@ export default function Home() {
                 const stockKey = `${p.id}-${s.warehouseId}`
                 const q = quantities[stockKey] !== undefined ? quantities[stockKey] : 1
                 return (
-                <div key={s.warehouseId} className="flex items-center justify-between">
-                  <div className="text-sm">
-                    <span className="font-medium">{s.warehouseName}</span>
-                    <span className={`ml-2 ${s.available === 0 ? "text-red-500" : "text-green-600"}`}>
-                      {s.available} available
-                    </span>
+                <div key={s.warehouseId} className="flex flex-col py-1 border-b last:border-0 border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm">
+                      <span className="font-medium">{s.warehouseName}</span>
+                      <span className={`ml-2 ${s.available === 0 ? "text-red-500" : "text-green-600"}`}>
+                        {s.available} available
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="1"
+                        max={s.available}
+                        value={q}
+                        onChange={(e) => {
+                          const val = e.target.value
+                          setQuantities(prev => ({ ...prev, [stockKey]: val === "" ? "" : parseInt(val) }))
+                        }}
+                        className="border border-gray-300 rounded px-2 py-1 w-16 text-sm"
+                        disabled={s.available === 0}
+                      />
+                      <button
+                        disabled={s.available === 0 || reserving === stockKey || typeof q === "string" || q > s.available || q < 1}
+                        onClick={() => reserve(p.id, s.warehouseId, s.warehouseName)}
+                        className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {reserving === stockKey ? "..." : s.available === 0 ? "Out of stock" : "Reserve"}
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      min="1"
-                      max={s.available}
-                      value={q}
-                      onChange={(e) => {
-                        const val = e.target.value
-                        setQuantities(prev => ({ ...prev, [stockKey]: val === "" ? "" : parseInt(val) }))
-                      }}
-                      className="border border-gray-300 rounded px-2 py-1 w-16 text-sm"
-                      disabled={s.available === 0}
-                    />
-                    <button
-                      disabled={s.available === 0 || reserving === stockKey || typeof q === "string" || q > s.available || q < 1}
-                      onClick={() => reserve(p.id, s.warehouseId, s.warehouseName)}
-                      className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {reserving === stockKey ? "..." : s.available === 0 ? "Out of stock" : "Reserve"}
-                    </button>
-                  </div>
+                  {err?.key === stockKey && (
+                    <div className="text-red-500 text-xs mt-1 text-right">{err.msg}</div>
+                  )}
                 </div>
               )})}
             </div>
