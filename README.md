@@ -48,7 +48,10 @@ I used pessimistic row-level locking. Inside a Prisma `$transaction`, I run a ra
 ## Expiry Mechanism
 
 For the 10-minute reservation expiry, I went with a **Vercel Cron job**. 
-It's configured in `vercel.json` to hit `/api/cron/expire-reservations` every single minute. The endpoint finds all `PENDING` reservations where `expiresAt` is in the past, marks them as `RELEASED`, and adds the units back to the available pool. 
+It's configured in `vercel.json` to hit `/api/cron/expire-reservations`. 
+*(Note: I originally set this to run every minute `* * * * *`, but Vercel's free Hobby tier limits cron jobs to once a day. I've updated it to `0 0 * * *` to allow the deployment to succeed, but the code logic is written to handle minute-by-minute sweeps!)*
+
+The endpoint finds all `PENDING` reservations where `expiresAt` is in the past, marks them as `RELEASED`, and adds the units back to the available pool. 
 
 To keep it secure in production, the endpoint requires a `CRON_SECRET` header that matches the environment variable.
 
