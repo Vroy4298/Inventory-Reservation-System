@@ -40,6 +40,8 @@ The main challenge was preventing two people from buying the exact same physical
 To make this easy to test, the seed script puts exactly **1 unit** of the "Sony WH-1000XM5" in the "Mumbai Central" warehouse. 
 If you open two browser tabs and try to click "Reserve" on both at the exact same time, one will succeed and go to the checkout page, and the other will get an "Out of stock" error (409 Conflict).
 
+![Concurrency Error](./concurrency.png)
+
 **How it works under the hood:** 
 I used pessimistic row-level locking. Inside a Prisma `$transaction`, I run a raw `SELECT ... FOR UPDATE` query on the `StockLevel` table. This locks that specific row in Postgres. If a second checkout request comes in for the same product at the same time, it has to wait until the first transaction finishes.
 
