@@ -24,6 +24,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [reserving, setReserving] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
+  const [quantities, setQuantities] = useState<Record<string, number | string>>({})
   const router = useRouter()
 
   useEffect(() => {
@@ -33,13 +34,17 @@ export default function Home() {
   }, [])
 
   async function reserve(pid: string, wid: string, wname: string) {
-    setReserving(`${pid}-${wid}`)
+    const stockKey = `${pid}-${wid}`
+    setReserving(stockKey)
     setErr(null)
+
+    const rawQ = quantities[stockKey]
+    const q = typeof rawQ === "number" ? rawQ : 1
 
     const res = await fetch("/api/reservations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productId: pid, warehouseId: wid, quantity: 1 })
+      body: JSON.stringify({ productId: pid, warehouseId: wid, quantity: q })
     })
 
     const data = await res.json()
@@ -84,7 +89,10 @@ export default function Home() {
             </div>
 
             <div className="border-t pt-3 space-y-2">
-              {p.stock.map(s => (
+              {p.stock.map(s => {
+                const stockKey = `${p.id}-${s.warehouseId}`
+                const q = quantities[stockKey] !== undefined ? quantities[stockKey] : 1
+                return (
                 <div key={s.warehouseId} className="flex items-center justify-between">
                   <div className="text-sm">
                     <span className="font-medium">{s.warehouseName}</span>
@@ -92,15 +100,29 @@ export default function Home() {
                       {s.available} available
                     </span>
                   </div>
-                  <button
-                    disabled={s.available === 0 || reserving === `${p.id}-${s.warehouseId}`}
-                    onClick={() => reserve(p.id, s.warehouseId, s.warehouseName)}
-                    className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {reserving === `${p.id}-${s.warehouseId}` ? "..." : s.available === 0 ? "Out of stock" : "Reserve"}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      max={s.available}
+                      value={q}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        setQuantities(prev => ({ ...prev, [stockKey]: val === "" ? "" : parseInt(val) }))
+                      }}
+                      className="border border-gray-300 rounded px-2 py-1 w-16 text-sm"
+                      disabled={s.available === 0}
+                    />
+                    <button
+                      disabled={s.available === 0 || reserving === stockKey || typeof q === "string" || q > s.available || q < 1}
+                      onClick={() => reserve(p.id, s.warehouseId, s.warehouseName)}
+                      className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {reserving === stockKey ? "..." : s.available === 0 ? "Out of stock" : "Reserve"}
+                    </button>
+                  </div>
                 </div>
-              ))}
+              )})}
             </div>
           </div>
         ))}
